@@ -1,9 +1,15 @@
 	#include "config.inc"
    
 
-	count EQU 0x00
+	Counter	EQU 0x00
     
-	org 0x00 
+	org 00
+	goto init
+	
+	org 04	    ; External Interrupt Vector: 
+	goto Flush  ; Only runs if interrupt triggered
+	
+	org 0010
     
 init:   CLRF PORTA
         CLRF PORTB
@@ -23,32 +29,42 @@ init:   CLRF PORTA
         MOVWF ADCON1
         MOVLW 0x07
         MOVWF CMCON
-        
-        MOVLW b'1111111'
-        MOVWF TRISA
-        
-        MOVLW b'0000000'
+	
+	; Configure PortA as all output
+	MOVLW B'0000000'
+	MOVWF TRISA
+	
+	; Configure PortB as all input
+        MOVLW B'1111111'
         MOVWF TRISB
         
         MOVLW 0x00
-        MOVWF count
+        MOVWF Counter
+	BSF PORTA, RA1
+	
       
-main:   BTFSS PORTA,RA3
-        CALL Counter
-        BTFSC PORTA,RA3
-        BCF PORTB,RB0
+main:   BTFSS PORTB,RB1
+        CALL Count
+        BTFSC PORTB,RB1
+        BCF PORTA,RA0
         goto main
 
 ; Interrupt responsible for resetting flowmeter counter
 ; Opens the water inlet valve
-Flush
-	RETURN
+Flush	BCF PORTA,  RA1
+	; ADD Flowmeter Reset
+	CALL OpenValve
+	BCF INTCON, INT0IF  ; Clear interrupt flag
+	RETFIE
 	
 ; Close water inlet valve once water level is max
 ; Wait a few seconds, then check level high again
 ; If not level high, then there is a leak
 WaterLevel
-	RETURN
+	CALL CloseValve
+	; ADD Flowmeter Reset
+	CALL Delay
+	RETFIE
 
 ; A very accurrate 20 seconds delay
 Delay
@@ -60,10 +76,18 @@ Delay
 ; They both cannot be on at the same time
 Alarms
 	RETURN
+
+; Open the selonoid valve to let water in	
+OpenValve
+	RETURN
+	
+; Close the selonoid valve and cut off water supply into toilet	
+CloseValve
+	RETURN
 	
 ; Count the number of pulses from flow-meter
-Counter	BSF PORTB, RB0
-	INCF count, 1
+Count	BSF PORTA, RA0
+	INCF Counter, 1
 	RETURN
 
         END
