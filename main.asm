@@ -1,28 +1,31 @@
 	#include "config.inc"
    
 
-	;Counter	EQU 0x00
+	Flushed	EQU 0
     
 	ORG	0x00
 	GOTO	init
 	
-	ORG	0x08   ; External Interrupt Vector:
+	ORG	0x08	; External Interrupt Vector:
 	BTFSC   INTCON,	INT0IF
 	GOTO    Flush	; Only runs if Flush interrupt triggered
-	BTFSC   INTCON3,	INT1IF
-        GOTO    WaterLevel	; Only runs if Water Level High triggered
+	;BTFSS	INTCON, INT0IF
+	;BSF	T0CON, TMR0ON	; Start Timer0
+	;GOTO	Count
+	BTFSC   INTCON3,INT1IF
+        GOTO    WaterLevel  ; Only runs if Water Level High triggered
     
 init:   CLRF	PORTA
         CLRF	PORTB
 	
 	; Configure Interrupt Control Register
-	MOVLW	B'10000000'
-	MOVWF	INTCON	    ; Enable GIE
-	MOVLW	B'11000000' ; INT1 and INT2 both @ high priority
-	MOVWF	INTCON3	    ; RB1/INT1 and RB2/INT2
+	BSF	INTCON, INT0IE	; Enable INT0 interrupt
+	BSF	INTCON3,INT1IP	; Set INT1 to high priority
+	BSF	INTCON3,INT1IE ; Enable INT1 enterrupt
+	BSF	INTCON, GIE	; Enable GIE
 	
 	; Configure TIMER0 in counting mode
-	; 1:8 Prescaler is not used
+	; 1:8 Prescaler is used
 	; Use External source on RA0/T0CKI
 	; 
 	MOVLW	B'01110010'
@@ -45,8 +48,17 @@ init:   CLRF	PORTA
         
         ;MOVLW	0x00
         ;MOVWF	Counter
+
+test:	BTFSS   Flushed, 1
+	BSF	T0CON, TMR0ON	; Stop Timer0
+	GOTO    count
+	GOTO	main
 	
-      
+count:	BTG	PORTA,	RA0	
+	BTFSS	INTCON, TMR0IF	; Logic for this part is  
+	BRA	count
+	CALL	CloseValve
+	     
 main:   BTFSS	PORTB,	RB3
 	BSF	PORTA,	RA3
         BTFSC	PORTB,	RB3
@@ -56,9 +68,10 @@ main:   BTFSS	PORTB,	RB3
 ; Interrupt responsible for resetting flowmeter counter
 ; Opens the water inlet valve
 Flush	CALL	OpenValve	; Open selonoid valve
-	BSF	INTCON, TMR0ON	; Start Timer0
-	CALL	Count		; count pulses from flow-meter
+	MOVLW	INT0IF		
+	MOVWF	Flushed		; Copy of Flush interrupt
 	BCF	INTCON,	INT0IF  ; Clear interrupt flag
+	BSF	PORTA,	RA0
 	RETFIE
 	
 ; Close water inlet valve once water level is max
@@ -67,9 +80,6 @@ Flush	CALL	OpenValve	; Open selonoid valve
 WaterLevel
 	BSF	PORTA,	RA2
 	CALL	CloseValve
-	; ADD Flowmeter Reset
-	;CALL	Delay
-	;BCF	PORTA,	RA2
 	BCF	INTCON3,INT1IF  ; Clear interrupt flag
 	RETFIE
 
@@ -93,16 +103,11 @@ OpenValve
 	
 ; Close the selonoid valve and cut off water supply into toilet	
 CloseValve
-	BCF	INTCON, TMR0ON	; Stop Timer0
+	BCF	T0CON, TMR0ON	; Stop Timer0
 	BCF	PORTA,	RA1
 	RETURN
 	
 ; Count the number of pulses from flow-meter
-Count	BTG	PORTA, RA0	
-	BTFSC	INTCON,INT0IF
-	GOTO	Count
-	CALL	CloseValve
-	RETURN
 	
         END
       
