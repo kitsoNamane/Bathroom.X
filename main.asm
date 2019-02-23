@@ -1,8 +1,6 @@
         #include "config.inc"
-	
 	CLK_COUNT   EQU	 0x20
 	TIMER_COUNT EQU	 D'0'
- 
         ORG	0000H
         GOTO	INIT
         
@@ -72,6 +70,7 @@ INIT    CLRF	PORTA
         BSF	TRISC,	RB0   
 	     
 
+; The main loop of the program
 MAIN    BTFSS	PORTB,	RB3
         BSF	PORTA,	RA3
         BTFSC	PORTB,	RB3
@@ -86,15 +85,18 @@ MAIN    BTFSS	PORTB,	RB3
 FLUSH_ISR	
         CALL	OPEN_VALVE	; Open selonoid valve
         BCF	INTCON,	INT0IF  ; Clear interrupt flag
-        BSF	PORTA,	RA0
+        ;BSF	PORTA,	RA0
         GOTO    CHK_INT
 	
 ; Close water inlet valve once water level is max
 ; Wait a few seconds, then check level high again
 ; If not level high, then there is a leak
 WATERLEVEL_ISR
-        BSF	PORTA,	RA2
+        ;BSF	PORTA,	RA2
         CALL	CLOSE_VALVE
+	BSF	PORTA,	RA0
+	CALL	DELAY
+	BCF	PORTA,	RA0
         BCF	INTCON3,INT1IF  ; Clear interrupt flag
         GOTO    CHK_INT
 
@@ -109,9 +111,8 @@ COUNTER_ISR
 
 ; A very accurrate 20 seconds delay
 DELAY_ISR
-        
-	BCF	T1CON,	TMR0ON
-	BCF	PORTA,	RA4
+        BCF	T1CON,	TMR0ON
+        BCF	PORTA,	RA4
         GOTO	CHK_INT
 	
 	
@@ -123,11 +124,9 @@ DELAY
 	MOVWF   TMR1L
 	BSF	PORTA, RA4
 	BSF     T0CON, TMR0ON
-	MOVLW	D'236'
-	MOVWF	TIMER_COUNT
 START	BTFSS	INTCON,	TMR0IF
 	GOTO	START
-INCREMENT   INCFSZ    TIMER_COUNT, 1
+INCREMENT   INCFSZ    TIMER_COUNT, F
 	GOTO	START
 	RETURN
 
@@ -141,8 +140,9 @@ ALARMS
 
 ; Open the selonoid valve to let water in	
 OPEN_VALVE
-        BSF	PORTA,	RA1
-        MOVLW	0xFF
+        BSF	PORTA,	RA0
+	BSF	PORTA,	RA0
+        MOVLW	0xFA
         MOVWF	TMR1H
         MOVLW	0x88
         MOVWF	TMR1L
@@ -152,7 +152,8 @@ OPEN_VALVE
 ; Close the selonoid valve and cut off water supply into toilet	
 CLOSE_VALVE
         BCF     T1CON, TMR1ON	; Stop Timer0
-        BCF	PORTA,	RA1
+        BCF	PORTA,	RA0
+	BCF	PORTA,	RA1
         RETURN
 
 
