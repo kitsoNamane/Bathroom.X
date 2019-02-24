@@ -18,6 +18,13 @@ CHK_INT
         BTFSC   INTCON3,INT1IF
         GOTO    WATERLEVEL_ISR  ; Only runs if Water Level High triggered
         RETFIE
+CHK_DELAY
+	CALL	DELAY
+	BTFSC	PORTB,	RB1
+	RETFIE
+	CALL	ALARMS
+	
+	RETFIE
 
 
         ORG     00100H
@@ -57,7 +64,7 @@ INIT    CLRF	PORTA
         MOVWF	CMCON
 	
         
-        ; Configure PortA as all output except TICK0
+        ; Configure PortA as all outputs
         MOVLW	B'00010000'    
         MOVWF	TRISA
                     
@@ -71,11 +78,7 @@ INIT    CLRF	PORTA
 	     
 
 ; The main loop of the program
-MAIN    BTFSS	PORTB,	RB3
-        BSF	PORTA,	RA3
-        BTFSC	PORTB,	RB3
-        BCF	PORTA,	RA3
-        GOTO	MAIN
+MAIN    GOTO	MAIN
 
 	
 	ORG     200H
@@ -85,20 +88,17 @@ MAIN    BTFSS	PORTB,	RB3
 FLUSH_ISR	
         CALL	OPEN_VALVE	; Open selonoid valve
         BCF	INTCON,	INT0IF  ; Clear interrupt flag
-        ;BSF	PORTA,	RA0
         GOTO    CHK_INT
 	
 ; Close water inlet valve once water level is max
 ; Wait a few seconds, then check level high again
 ; If not level high, then there is a leak
 WATERLEVEL_ISR
-        ;BSF	PORTA,	RA2
         CALL	CLOSE_VALVE
-	BSF	PORTA,	RA0
-	CALL	DELAY
-	BCF	PORTA,	RA0
+	BSF	PORTA,	RA1
+	MOVLW	D'40'
         BCF	INTCON3,INT1IF  ; Clear interrupt flag
-        GOTO    CHK_INT
+        GOTO    CHK_DELAY
 
 
 ; Count the number of pulses from flow-meter	
@@ -111,13 +111,14 @@ COUNTER_ISR
 
 ; A very accurrate 20 seconds delay
 DELAY_ISR
-        BCF	T1CON,	TMR0ON
+        BCF	T0CON,	TMR0ON
         BCF	PORTA,	RA4
         GOTO	CHK_INT
 	
 	
 	ORG	300H
 DELAY	
+	MOVWF	TIMER_COUNT
 	MOVLW   0x0B
 	MOVWF   TMR1H
 	MOVLW   0xDC
@@ -126,7 +127,7 @@ DELAY
 	BSF     T0CON, TMR0ON
 START	BTFSS	INTCON,	TMR0IF
 	GOTO	START
-INCREMENT   INCFSZ    TIMER_COUNT, F
+INCREMENT   DECFSZ    TIMER_COUNT, F
 	GOTO	START
 	RETURN
 
@@ -135,17 +136,21 @@ INCREMENT   INCFSZ    TIMER_COUNT, F
 ; GREEN if normal operation RB2
 ; They both cannot be on at the same time
 ALARMS
-        BSF     PORTA,  RA4
+	BCF	PORTA,	RA1
+        ;BSF     PORTA,  RA4
         RETURN
 
 ; Open the selonoid valve to let water in	
 OPEN_VALVE
         BSF	PORTA,	RA0
-	BSF	PORTA,	RA0
-        MOVLW	0xFA
+        MOVLW	0xFF
         MOVWF	TMR1H
-        MOVLW	0x88
+        MOVLW	0xED
         MOVWF	TMR1L
+	; Delay a few few seconds before opening the valve
+	MOVLW	D'4'
+	CALL	DELAY
+	BSF	PORTA,	RA1
         BSF     T1CON, TMR1ON	; Start Timer0
         RETURN
 	
