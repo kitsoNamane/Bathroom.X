@@ -5,27 +5,31 @@
         GOTO	INIT
         
         ORG	0008H	; External Interrupt Vector:
-	GOTO	CHK_INT
-	
-	ORG	0040H
 CHK_INT
         BTFSC   INTCON,	INT0IF
         GOTO    FLUSH_ISR	; Only runs if Flush interrupt triggered
 
         BTFSC   PIR1,   TMR1IF
         GOTO    COUNTER_ISR
+	
+	;BTFSC   INTCON,   TMR0IF
+	;GOTO    DELAY_ISR
 
         BTFSC   INTCON3,INT1IF
         GOTO    WATERLEVEL_ISR  ; Only runs if Water Level High triggered
-        
+        RETFIE
+	
+	ORG	0040H
+CHK_DELAY
+	MOVLW	D'20'
+	MOVWF	TIMER_COUNT
+	CALL	DELAY
+	BCF	INTCON3,INT1IF  ; Clear interrupt flag
+	BTFSS	PORTB,	RB1	; Check if Water level is still high
+    	GOTO	ALARMS
+	BSF	PORTA,	RA2	; Toilet Working
 	RETFIE
 	
-CHK_DELAY
-	MOVLW	D'40'
-	CALL	DELAY
-	BTFSS	PORTB,	RB1
-	CALL	ALARMS
-	RETFIE
 
 
         ORG     00100H
@@ -38,6 +42,9 @@ INIT    CLRF	PORTA
 
         BSF     INTCON3,INT1IP	; Set INT1 to high priority
         BSF     INTCON3,INT1IE  ; Enable INT1 enterrupt
+	
+	;BCF     INTCON,	TMR0IF	; Clear	TMR0 interrupts
+	;BSF     INTCON,	TMR0IE	; Enable TMR0 interrupts
 
         BCF     PIR1,   TMR1IF	; Clear	TMR1 interrupts
         BSF     PIE1,   TMR1IE	; Enable TMR1 interrupts
@@ -62,7 +69,7 @@ INIT    CLRF	PORTA
         MOVWF	CMCON
 	
         
-        ; Configure PortA as all outputs
+        ; Configure PortA as all output except TICK0
         MOVLW	B'00010000'    
         MOVWF	TRISA
                     
@@ -84,37 +91,41 @@ MAIN    GOTO	MAIN
 ; Opens the water inlet valve
 	
 FLUSH_ISR
+	BSF	PORTA, RA0
+	MOVLW	D'4'
+	MOVWF	TIMER_COUNT
+	CALL	DELAY
         CALL	OPEN_VALVE	; Open selonoid valve
-	BCF	INTCON,	INT0IF  ; Clear interrupt flag
-        GOTO	CHK_INT
+        BCF	INTCON,	INT0IF  ; Clear interrupt flag
+        GOTO    CHK_INT
 	
 ; Close water inlet valve once water level is max
 ; Wait a few seconds, then check level high again
 ; If not level high, then there is a leak
 WATERLEVEL_ISR
+        ;BSF	PORTA,	RA2
         CALL	CLOSE_VALVE
-	BCF	INTCON3,INT1IF  ; Clear interrupt flag
         GOTO    CHK_DELAY
 
 
 ; Count the number of pulses from flow-meter	
 ; TO DO: Flash an LED
 COUNTER_ISR
+        BCF     PIR1,   TMR1IF
+	BCF     T1CON, TMR1ON	; Stop Timer0
         CALL    CLOSE_VALVE
-	BCF     PIR1,   TMR1IF
         GOTO    CHK_INT
 
 
 ; A very accurrate 20 seconds delay
 DELAY_ISR
+        BCF	T1CON,	TMR0ON
         BCF	PORTA,	RA4
-	BCF	T0CON,	TMR0ON
         GOTO	CHK_INT
 	
 	
 	ORG	300H
 DELAY	
-	MOVWF	TIMER_COUNT
 	MOVLW   0x0B
 	MOVWF   TMR1H
 	MOVLW   0xDC
@@ -131,31 +142,25 @@ INCREMENT   DECFSZ    TIMER_COUNT, F
 ; RED if malfunctioned	    RB1
 ; GREEN if normal operation RB2
 ; They both cannot be on at the same time
-ALARMS
-	BCF	PORTA,	RA1
-        ;BSF     PORTA,  RA4
+ALARMS	
+	BCF	PORTA,	RA2 ; Toilet Normal Off
+        BSF     PORTA,  RA3 ; Toilet Abnormal On
         RETURN
 
 ; Open the selonoid valve to let water in	
 OPEN_VALVE
-        BSF	PORTA,	RA0
+	BSF	PORTA,	RA1
         MOVLW	0xFF
         MOVWF	TMR1H
         MOVLW	0xED
         MOVWF	TMR1L
-	; Delay a few few seconds before opening the valve
-	MOVLW	D'4'
-	CALL	DELAY
-	BSF	PORTA,	RA1
         BSF     T1CON, TMR1ON	; Start Timer0
         RETURN
 	
 ; Close the selonoid valve and cut off water supply into toilet	
 CLOSE_VALVE
-        BCF     T1CON, TMR1ON	; Stop Timer0
         BCF	PORTA,	RA0
 	BCF	PORTA,	RA1
         RETURN
-
 
         END
