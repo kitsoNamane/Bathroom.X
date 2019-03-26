@@ -14,9 +14,6 @@ CHK_INT
         BTFSC   PIR1,   TMR1IF
         GOTO    COUNTER_ISR
 	
-	    ;BTFSC   INTCON,   TMR0IF
-	    ;GOTO    DELAY_ISR
-
         BTFSC   INTCON3,INT1IF
         GOTO    WATERLEVEL_ISR  ; Only runs if Water Level High triggered
         RETFIE
