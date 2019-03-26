@@ -1,8 +1,10 @@
         #include "config.inc"
     	CLK_COUNT   EQU	 0x20
-    	TIMER_COUNT EQU	 0x30
+    	
         ORG	0000H
+	TIMER_COUNT DB	 D'0'
         GOTO	INIT
+	
         
         ORG	0008H	; External Interrupt Vector:
 CHK_INT
@@ -20,8 +22,9 @@ CHK_INT
         RETFIE
 	
 	ORG	0040H
-CHK_DELAY
-	MOVLW	D'20'
+CHK_FAULT
+	CLRF	TIMER_COUNT
+	MOVLW	D'8'
 	MOVWF	TIMER_COUNT
         CALL	DELAY
 	BCF	INTCON3,INT1IF  ; Clear interrupt flag
@@ -90,6 +93,7 @@ MAIN    GOTO	MAIN
 	
 FLUSH_ISR
     	BSF	PORTA, RA0
+	CLRF	TIMER_COUNT
     	MOVLW	D'8'
     	MOVWF	TIMER_COUNT
     	CALL	DELAY
@@ -102,7 +106,11 @@ FLUSH_ISR
 ; If not level high, then there is a leak
 WATERLEVEL_ISR
         CALL	CLOSE_VALVE
-        GOTO    CHK_DELAY
+	CLRF	TIMER_COUNT
+	MOVLW	D'8'
+	MOVWF	TIMER_COUNT
+	CALL	DELAY
+        GOTO    CHK_FAULT
 
 
 ; Count the number of pulses from flow-meter	
@@ -111,7 +119,7 @@ COUNTER_ISR
         BCF     PIR1,   TMR1IF
     	BCF     T1CON, TMR1ON	; Stop Timer0
         CALL    CLOSE_VALVE
-	GOTO	CHK_DELAY
+	GOTO	CHK_FAULT
         GOTO    CHK_INT
 
 
