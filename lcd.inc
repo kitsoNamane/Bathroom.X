@@ -1,11 +1,11 @@
- CONSTANT FUNCTSET8 = b'00110000' ; 8-bit mode, 2 lines
- CONSTANT FUNCTSET4 = b'00100000' ; 4-bit mode, 2 lines
- CONSTANT DDZERO = b'00110000' ; Write 0 to DDRAM
+    CONSTANT FUNCTSET8 = b'00110000' ; 8-bit mode, 2 lines
+    CONSTANT FUNCTSET4 = b'00100000' ; 4-bit mode, 2 lines
+    CONSTANT DDZERO    = b'10000000' ; Write 0 to DDRAM
 
- CONSTANT LCD2L = b'00101000'
- CONSTANT LCDCONT = b'00001100'
+    CONSTANT LCD2L   = b'00101000'
+    CONSTANT LCDCONT = b'00001100'
 
- CONSTANT LCDSH = b'00101000'
+    CONSTANT LCDSH   = b'00101000'
 
  ; Commands for working with LCD display
     CONSTANT LCDCLR = b'00000001' ;clear display, cursor home
@@ -21,6 +21,8 @@
 
 lcdinit macro
     CLRF LCDPORT
+    MOVLW B'00000000'
+    MOVWF LCDTRIS
 
     CALL Delay1ms
     CALL Delay1ms
@@ -62,7 +64,6 @@ LCDcomd CLRF LCDbuf
 
 LCDdata CLRF LCDbuf
     BSF LCDbuf,RS
-
 LCDwr MOVWF LCDtemp
     ANDLW b'11110000'
     IORWF LCDbuf,w
@@ -85,15 +86,18 @@ SendW   ; Prints the content of register W on LCD
     RETURN
 
 lcdtext macro select, text
-    local Message
+    local Message 
     local Start
     local Exit
-    local Poruka
-    local i=0
+    local SENDdata
+    local Display
+    ;local i=0x0
+    ;local Poruka
     GOTO Start
     
-Poruka Dt text
-    Dt 0
+Message DB text,0;
+;Poruka DT text
+;	DT 0
 Start
     if select==1
     lcdcmd LCDL1
@@ -102,13 +106,18 @@ Start
     lcdcmd LCDL2
     endif
     endif
-    while i<15
-	CALL Message+i
-	ADDLW 0
-	BZ Exit
-	CALL LCDdata
-	i=i+1
-	endw
+SENDdata MOVLW upper(Message)
+    MOVWF TBLPTRU
+    MOVLW high(Message)
+    MOVWF TBLPTRH
+    MOVLW low(Message)
+    MOVWF TBLPTRL
+Display TBLRD*+
+    MOVF TABLAT,W
+    IORLW 0x0
+    BZ Exit
+    CALL LCDdata
+    BRA Display
 Exit
     ENDM
 
@@ -134,7 +143,7 @@ lcdbyte macro arg0
     ENDM
 
 Delay1ms:
-    MOVLW .2
+    MOVLW .100
     MOVWF LOOPcnt
 Delay10us:
     nop

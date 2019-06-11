@@ -23,11 +23,13 @@
     GOTO Main
 
     include "mikroe184.inc"
-    include "LCD.inc"
+    include "lcd.inc"
 
 LCDPORT equ PORTB
-RS equ RB2
-EN equ RB3
+LCDTRIS equ TRISB
+
+EN equ RB2
+RS equ RB3
 
 Main
     MOVLW .23
@@ -37,6 +39,7 @@ Main
 
 Loop
     lcdcmd 0x01
+    
     lcdtext 1,"bathroomwater"
     lcdtext 2,"Control LCD"
     pausems .2000
