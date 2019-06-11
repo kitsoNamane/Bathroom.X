@@ -2,10 +2,10 @@
     CONSTANT FUNCTSET4 = b'00100000' ; 4-bit mode, 2 lines
     CONSTANT DDZERO    = b'10000000' ; Write 0 to DDRAM
 
-    CONSTANT LCD2L   = b'00101000'
-    CONSTANT LCDCONT = b'00001100'
+    CONSTANT LCD2L     = b'00101000'
+    CONSTANT LCDCONT   = b'00001100'
 
-    CONSTANT LCDSH   = b'00101000'
+    CONSTANT LCDSH     = b'00101000'
 
  ; Commands for working with LCD display
     CONSTANT LCDCLR = b'00000001' ;clear display, cursor home
@@ -89,15 +89,13 @@ lcdtext macro select, text
     local Message 
     local Start
     local Exit
+    ;Customisation starting from here
     local SENDdata
     local Display
-    ;local i=0x0
-    ;local Poruka
+    
     GOTO Start
     
 Message DB text,0;
-;Poruka DT text
-;	DT 0
 Start
     if select==1
     lcdcmd LCDL1
@@ -118,6 +116,7 @@ Display TBLRD*+
     BZ Exit
     CALL LCDdata
     BRA Display
+    ;Customisation ends here
 Exit
     ENDM
 
