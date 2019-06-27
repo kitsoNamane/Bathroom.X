@@ -156,3 +156,18 @@ Delay10us:
     DECFSZ LOOPcnt,f
     GOTO Delay10us
     RETURN
+Delay1s:
+    MOVLW .100
+    MOVWF LOOPcnt
+Delay1us:
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+    nop
+
+    DECFSZ LOOPcnt,f
+    GOTO Delay1us
+    RETURN

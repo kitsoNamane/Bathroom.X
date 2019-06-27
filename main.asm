@@ -1,4 +1,6 @@
+    
     #include "config.inc"
+
     cblock 0x00
         HIcnt
         LOcnt
@@ -6,11 +8,15 @@
 
         LCDbuf
         LCDtemp
+        d1 
+        d2 
+        d3
 
         Digtemp
         Dig1
         Dig2
         Dig3
+        TIMERcount
 
         temp
     endc
@@ -24,10 +30,10 @@ LCDPORT equ PORTB
 LCDTRIS equ TRISB
 
 CLKcount equ 0x20
-TIMERcount equ 0x00
+;TIMERcount equ 0x00
 
-EN equ RB2
-RS equ RB3
+EN equ RB3
+RS equ RB2
 
     org	0x08	; External Interrupt Vector:
 CHKint
@@ -54,10 +60,33 @@ CHKfault
     GOTO	AlarmsOK	; Toilet Working
     RETFIE
 
-
     org     0x100
     include "mikroe184.inc"
     include "lcd.inc"
+WebDelay
+    movlw 0x11
+    movwf d1
+    movlw 0x5D
+    movwf d2
+    movlw 0x05
+    movwf d3
+Delay1ss
+    decfsz d1, f 
+    goto $+2
+    decfsz d2, f 
+    goto $+2
+    decfsz d3, f 
+    goto Delay1ss
+
+    RETURN
+
+Delay4s
+    CALL WebDelay
+    CALL WebDelay
+    CALL WebDelay
+    CALL WebDelay
+    RETURN
+
     org 0x200
 Init
     CLRF	PORTA
@@ -99,8 +128,6 @@ Init
     ; Configure RCO clock input
     BSF	TRISC,	RB0
     
-    
-
     ; Configure LCD 
     MOVLW .23
     MOVWF temp
@@ -130,9 +157,10 @@ FlushISR
     CALL	TMRdelay
     lcdcmd 0x01
     lcdtext 1, "Done !!!"
-    MOVLW	D'5'
-    MOVWF	TIMERcount
-    CALL	TMRdelay
+    ;MOVLW	D'8'
+    ;MOVWF	TIMERcount
+    ;;CALL	TMRdelay
+    CALL Delay4s
     
     CALL	OPENvalve	; Open selonoid valve
     BCF	INTCON,	INT0IF  ; Clear interrupt flag
@@ -171,6 +199,9 @@ DelayISR
 	
     org	0x400
 TMRdelay	
+    CLRF TMR0H
+    CLRF TMR0L
+
     MOVLW   0x0B
     MOVWF   TMR0H
     MOVLW   0xDC
@@ -211,10 +242,11 @@ OPENvalve
     MOVLW	0xED
     MOVWF	TMR1L
     lcdcmd 0x01
-    lcdtext 1, "Volume : "
     BSF     T1CON, TMR1ON	; Start Timer0
+    lcdcmd 0x01
+    lcdtext 1, "Loading Water..."
     RETURN
-	
+
 
 ; Close the selonoid valve and cut off water supply into toilet	
 ClOSEvalve
@@ -223,6 +255,10 @@ ClOSEvalve
     lcdtext 2, "Reached"
     BCF	PORTA,	RA0
     BCF	PORTA,	RA1
+    CLRF TIMERcount
+    MOVLW   D'8'
+    MOVWF   TIMERcount
+    CALL    TMRdelay
     RETURN
     
 Fault BCF INTCON3,INT1IE
