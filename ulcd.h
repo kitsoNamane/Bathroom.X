@@ -7,6 +7,10 @@
 
 #ifndef ULCD_H
 #define	ULCD_H
+void lcd_init(void);
+void lcd_reset(void);
+void lcd_cmd(char cmd);
+void lcd_data(unsigned char dat);
 
 void lcd_reset(void) {
     LCD = 0xFF;

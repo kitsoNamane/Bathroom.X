@@ -7,23 +7,32 @@
 
 #ifndef CONFIG_PORTS_H
 #define	CONFIG_PORTS_H
+#include "config.h"
 
-void input_config(void) {
+#define BLINK PORTBbits.RB3
+#define FLUSH PORTBbits.RB4
+#define OPEN PORTBbits.RB5
+#define FAULT PORTBbits.RB6
+#define OKAY PORTBbits.RB7
+
+#define EN PORTCbits.RC0
+#define RS PORTCbits.RC1
+
+void input_config() {
     TRISBbits.TRISB0 = 1;
     TRISBbits.TRISB1 = 1;
     TRISAbits.TRISA4 = 1;
 }
 
-void output_config(void) {
+void output_config() {
     // configure LCD data output lanes
     TRISAbits.TRISA0 = 0;
     TRISAbits.TRISA1 = 0;
     TRISAbits.TRISA2 = 0;
     TRISAbits.TRISA3 = 0;
 
-    TRISBbits.TRISB2 = 0; // Blink
-    TRISBbits.TRISB3 = 0; // Flush
-    //TRISBbits.TRISB4 = 0; // Counter
+    TRISBbits.TRISB3 = 0; // Blink
+    TRISBbits.TRISB4 = 0; // Flush
     TRISBbits.TRISB5 = 0; // Open valve
     TRISBbits.TRISB6 = 0; // Fault detected
     TRISBbits.TRISB7 = 0; // Okay
@@ -37,7 +46,7 @@ void output_config(void) {
     return;
 }
 
-void interrupt_config(void) {
+void interrupt_config() {
     // enable INT0, INT1 and TMR0 overflow interrupts
     INTCONbits.INT0IE = 1;
     INTCONbits.TMR0IE = 1;
@@ -51,15 +60,16 @@ void interrupt_config(void) {
     INTCON2bits.TMR0IP = 1;
     INTCON3bits.INT1P = 1;
 
-    //INTCONbits.TMR0IF = 0;
-    //INTCONbits.INT0IF = 0;
-    //INTCON3bits.INT1F = 0;
-    // Enable Global Interrupts
+    INTCONbits.TMR0IF = 0;
+    INTCONbits.INT0IF = 0;
+    INTCON3bits.INT1F = 0;
+    // Enable all Peripheral and Global Interrupts
+    INTCONbits.PEIE = 1;
     INTCONbits.GIE = 1;
     return;
 }
 
-void timer_config(void) {
+void timer_config() {
     // configure TMR0 as a counter
     // in 16-bit mode, no prescaler
     // and using RA6/T0CKI as input clock

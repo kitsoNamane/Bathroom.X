@@ -1,23 +1,5 @@
-#include "config.h"
 #include "config_ports.h"
 
-#define _XTAL_FREQ 8000000
-
-#define BLINK PORTBbits.RB2
-#define FLUSH PORTBbits.RB3
-#define COUNTER PORTBbits.RB4
-#define OPEN PORTBbits.RB5
-#define FAULT PORTBbits.RB6
-#define OKAY PORTBbits.RB7
-
-#define EN PORTCbits.RC0
-#define RS PORTCbits.RC1
-#define LCD PORTA
-
-void lcd_init(void);
-void lcd_reset(void);
-void lcd_cmd(char cmd);
-void lcd_data(unsigned char dat);
 
 void flush_isr(void);
 void level_isr(void);
@@ -37,6 +19,7 @@ void __interrupt(high_priority) chk_isr(void) {
 
 
 int main(void) {
+    
     input_config();
     output_config();
     interrupt_config();
@@ -46,7 +29,7 @@ int main(void) {
     PORTC = 0x00;
     while(1) {
         BLINK = ~BLINK;
-        __delay_ms(200);
+        __delay_ms(2000);
     }
     return 0;
 }
@@ -92,7 +75,6 @@ void level_isr(void) {
 
 void counter_isr(void) {
     close_valve();
-    level_isr();
     INTCONbits.TMR0IF = 0;
     INTCONbits.GIE = 1;
     return;
